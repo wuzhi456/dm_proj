@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{microtype}
+\usepackage{xurl}
 \usepackage{xeCJK}
 \setmainfont{Noto Serif CJK SC}
 \setsansfont{Noto Sans CJK SC}
@@ -15,6 +16,8 @@
 \setCJKmonofont{Noto Sans Mono CJK SC}
 \newcommand{\cn}[1]{#1}
 \newcommand{\zhtext}[2]{\texorpdfstring{\cn{#1}}{#2}}
+\urlstyle{tt}
+\newcommand{\feat}[1]{\path{#1}}
 
 %% Remove ACM reference format / copyright box for course submission
 \setcopyright{none}
@@ -454,40 +457,40 @@ Readability            & 5.2  & 6.8  \\
 \section{关键发现与讨论}
 
 \paragraph{发现 1：二元词组重复是通用 AI 指纹}
-\texttt{unique\_bigram\_ratio} 在中英文中均位列 SHAP 第一，
+\feat{unique_bigram_ratio} 在中英文中均位列 SHAP 第一，
 且在多模型共识中属于最高等级特征。
 这表明 ChatGPT 在多领域文本中更容易产生重复、模板化的词对组合。
 
 \paragraph{发现 2：英文中句法复杂度具有显著区分力}
-英文中 \texttt{dep\_depth\_avg} 排名第二，贡献 13.3\% 特征组 SHAP。
+英文中 \feat{dep_depth_avg} 排名第二，贡献 13.3\% 特征组 SHAP。
 AI 英文文本常表现出更深的从句嵌套层级，
 与 ChatGPT 强调“完整性与结构化表达”的生成倾向一致。
 
 \paragraph{发现 3：中文检测主要由词性分布驱动}
 中文 \textit{POS \& Syntax} 特征组贡献达 26.7\%。
-人类文本更常使用副词（\texttt{adv\_ratio\_zh} 在 AI 中下降），
+人类文本更常使用副词（\feat{adv_ratio_zh} 在 AI 中下降），
 体现口语化缓和与情绪增强；AI 文本则更常使用连词
-（\texttt{conj\_ratio\_zh} 在 AI 中升高）以强化显式逻辑。
+（\feat{conj_ratio_zh} 在 AI 中升高）以强化显式逻辑。
 
 \paragraph{发现 4：AI 文本词汇多样性持续偏低}
-\texttt{hapax\_ratio} 与 \texttt{vocab\_density} 在中英文中都与 AI 类负相关。
+\feat{hapax_ratio} 与 \feat{vocab_density} 在中英文中都与 AI 类负相关。
 尽管 ChatGPT 拥有大规模训练词汇，其单篇输出仍倾向于收敛到高概率、领域常见词，
 导致局部词汇集合更受限。
 
 \paragraph{发现 5：人类文本句长波动更大}
-\texttt{sent\_len\_cv} 在 AI 文本中普遍更低，
+\feat{sent_len_cv} 在 AI 文本中普遍更低，
 说明 ChatGPT 更倾向于生成长度均匀的句子，
 这是“机器化文风”的另一种表现。
 
 \paragraph{发现 6：连接与话语特征验证 AI 结构化表达倾向}
-\texttt{trans\_hedging} 在中文 SHAP 中排名第 8，
+\feat{trans_hedging} 在中文 SHAP 中排名第 8，
 如“值得注意的是”“一般来说”等表达在 AI 文本中更高频。
 整体上，连接词特征贡献约 8.5--8.8\% SHAP，
 虽非最强但稳定有效。
 
 \paragraph{情绪平坦性：虽被过滤但有效的信号}
-\texttt{sentiment\_fluctuation} 因与其他情感统计高度相关（$|r|{>}0.85$）在两种语言中被移除。
-但 \texttt{sentiment\_neutrality} 保留并对分类有贡献，
+\feat{sentiment_fluctuation} 因与其他情感统计高度相关（$|r|{>}0.85$）在两种语言中被移除。
+但 \feat{sentiment_neutrality} 保留并对分类有贡献，
 支持“AI 文本情绪变化不足、语气更平”的假设。
 
 \paragraph{与神经网络基线对比}
@@ -530,32 +533,32 @@ SHAP 分析定量表明：\emph{二元词组重复、句法层级深度、词汇
 \bibitem{guo2023hc3}
 Biyang Guo, Xin Zhang, Ziyuan Wang, Minqi Jiang, Jinran Nie, Yuxuan Ding, Jianwei Yue, and Yupeng Wu.
 \newblock How Close is ChatGPT to Human Experts? Comparison Corpus, Evaluation, and Detection.
-\newblock \textit{arXiv 预印本 arXiv:2301.07597}, 2023。
+\newblock \textit{arXiv preprint arXiv:2301.07597}, 2023.
 
 \bibitem{mitchell2023detectgpt}
 Eric Mitchell, Yoonho Lee, Alexander Khazatsky, Christopher D.\ Manning, and Chelsea Finn.
 \newblock DetectGPT: Zero-Shot Machine-Generated Text Detection using Probability Curvature.
-\newblock 载于 \textit{ICML 会议论文集}, 2023。
+\newblock In \textit{Proceedings of ICML}, 2023.
 
 \bibitem{gehrmann2019gltr}
 Sebastian Gehrmann, Hendrik Strobelt, and Alexander M.\ Rush.
 \newblock GLTR: Statistical Detection and Visualization of Generated Text.
-\newblock 载于 \textit{ACL Demo Track 论文集}, 2019。
+\newblock In \textit{Proceedings of the ACL Demo Track}, 2019.
 
 \bibitem{lundberg2017shap}
 Scott M.\ Lundberg and Su-In Lee.
 \newblock A Unified Approach to Interpreting Model Predictions.
-\newblock 载于 \textit{NeurIPS 会议论文集}, 2017。
+\newblock In \textit{Proceedings of NeurIPS}, 2017.
 
 \bibitem{juola2006}
 Patrick Juola.
 \newblock Authorship Attribution.
-\newblock \textit{Foundations and Trends in Information Retrieval}, 1(3):233--334, 2006。
+\newblock \textit{Foundations and Trends in Information Retrieval}, 1(3):233--334, 2006.
 
 \bibitem{bhatt2023stylometric}
 Gaurav Bhatt, Bhavna Jain, and Sanjay Chaudhary.
 \newblock Stylometric Detection of AI-Generated Text in Twitter Timelines.
-\newblock \textit{arXiv 预印本 arXiv:2303.03697}, 2023。
+\newblock \textit{arXiv preprint arXiv:2303.03697}, 2023.
 
 \end{thebibliography}
 
