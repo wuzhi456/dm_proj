@@ -1,0 +1,3 @@
+[submodule "HC3_repo"]
+	path = HC3_repo
+	url = https://github.com/Hello-SimpleAI/chatgpt-comparison-detection.git
