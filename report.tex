@@ -24,49 +24,32 @@
 
 \begin{document}
 
-\title{Interpretable AIGC Detection via Multi-Dimensional Linguistic Feature Engineering: A Deep Analysis of the HC3 Corpus}
+\title{基于多维语言学特征工程的可解释 AIGC 检测：HC3 语料深度分析}
 
-\author{\zhtext{杨意翀}{Yichong Yang}}
-\author{\zhtext{韦嘉豪}{Jiahao Wei}}
-\author{\zhtext{熊佳漩}{Jiaxuan Xiong}}
-\author{\zhtext{曾子致}{Zizhi Zeng}}
-\author{\zhtext{江易明}{Yiming Jiang}}
+\author{\zhtext{杨意翀、韦嘉豪、熊佳漩、曾子致、江易明}{Yichong Yang, Jiahao Wei, Jiaxuan Xiong, Zizhi Zeng, Yiming Jiang}}
 \affiliation{%
   \institution{\zhtext{南方科技大学}{Southern University of Science and Technology}}
 }
 
 %%----------------------------------------------------------
 \begin{abstract}
-The proliferation of large language models (LLMs) such as ChatGPT has raised serious
-concerns about academic plagiarism and misinformation.
-This paper addresses the problem of distinguishing human-written text from AI-generated
-text (AIGC detection) using the Human ChatGPT Comparison Corpus (HC3), covering
-both English and Chinese domains.
-Rather than relying on black-box deep learning models, we adopt a fully interpretable
-pipeline grounded in multi-dimensional linguistic feature engineering:
-six feature categories comprising 46--51 hand-crafted features per language
-(vocabulary richness, readability, POS/syntax, dependency depth, discourse patterns,
-and sentiment/emotion).
-Redundant features are removed by Pearson correlation analysis
-($|r|{>}0.85$), and three gradient-boosted tree classifiers
-(Random Forest, XGBoost, LightGBM) are trained and benchmarked.
-Model decisions are explained via SHAP (SHapley Additive exPlanations) values and
-multi-model feature importance consensus.
-Our best models achieve \textbf{95.1\%} accuracy / F1\,=\,0.9506 (AUC\,=\,0.9898)
-on English and \textbf{92.1\%} accuracy / F1\,=\,0.9199 (AUC\,=\,0.9779) on Chinese,
-using only hand-crafted features.
-SHAP attribution reveals that bigram repetition, syntactic complexity, and vocabulary
-density are the most discriminative signals across both languages, providing clear,
-quantitative answers to the question: \emph{what linguistic fingerprints expose AI identity?}
+随着 ChatGPT 等大语言模型（LLM）的快速普及，学术抄袭与虚假信息传播风险显著上升。
+本文围绕“人类文本与 AI 生成文本（AIGC）如何区分”这一问题，基于 Human ChatGPT Comparison Corpus（HC3）
+构建中英文双语可解释检测方案。我们不依赖黑盒深度模型，而是采用多维语言学特征工程：
+从词汇丰富度、可读性、词性与句法、依存深度、话语连接与情感情绪六大维度提取每种语言 46--51 个手工特征。
+通过皮尔逊相关性过滤（$|r|{>}0.85$）去除冗余后，训练并比较 Random Forest、XGBoost、LightGBM 三类集成树模型。
+同时结合 SHAP 与多模型特征重要性共识解释模型决策。
+实验结果表明，仅用手工特征即可在英文上达到 \textbf{95.1\%} Accuracy / F1\,=\,0.9506（AUC\,=\,0.9898），
+在中文上达到 \textbf{92.1\%} Accuracy / F1\,=\,0.9199（AUC\,=\,0.9779）。
+归因分析显示，二元词组重复、句法复杂度与词汇密度是最稳定、最具判别力的 AIGC 语言指纹。
 \end{abstract}
 
-\keywords{AIGC detection, feature engineering, interpretable machine learning, SHAP,
-          HC3, ChatGPT, text mining}
+\keywords{AIGC 检测，特征工程，可解释机器学习，SHAP，HC3，ChatGPT，文本挖掘}
 
 \maketitle
 
 %%----------------------------------------------------------
-\section{Introduction}
+\section{引言}
 
 Since its public release in November 2022, ChatGPT has demonstrated the ability
 to produce fluent, coherent text across virtually any domain, challenging the
@@ -89,7 +72,7 @@ detector that is (a)~\emph{accurate}, (b)~\emph{interpretable}, and
 Our response is a feature-engineering-first approach that systematically mines the
 statistical and linguistic regularities that separate human from AI writing.
 
-\paragraph{Contributions.}
+\paragraph{主要贡献。}
 \begin{enumerate}
 \item We construct a rich, \emph{bilingual} (English + Chinese) feature space
       of 46--51 linguistic features organized into six interpretable categories.
@@ -102,22 +85,22 @@ statistical and linguistic regularities that separate human from AI writing.
 \end{enumerate}
 
 %%----------------------------------------------------------
-\section{Related Work}
+\section{相关工作}
 
-\paragraph{HC3 and linguistic analysis.}
+\paragraph{HC3 与语言学分析。}
 Guo et al.~\cite{guo2023hc3} introduced the HC3 dataset and conducted linguistic
 comparisons showing that ChatGPT answers tend to be longer, more neutral in sentiment,
 and richer in discourse connectives.
 Their fine-tuned RoBERTa detector reached $\sim$98.8\% F1 on English
 but offers no interpretability.
 
-\paragraph{Statistical / zero-shot detection.}
+\paragraph{统计/零样本检测方法。}
 GLTR~\cite{gehrmann2019gltr} visualises per-token rank distributions from a
 reference LM to expose machine text.
 DetectGPT~\cite{mitchell2023detectgpt} perturbs candidate texts and measures
 log-probability curvature; it needs no training data but requires LLM access.
 
-\paragraph{Stylometric and feature-based detection.}
+\paragraph{文体计量与特征工程检测。}
 Stylometric approaches (Type-Token Ratio, Honore's R, readability scores)
 have been applied to authorship attribution for decades~\cite{juola2006}.
 Recent work has adapted these to AIGC detection~\cite{bhatt2023stylometric},
@@ -126,9 +109,9 @@ Our work extends these directions to a bilingual setting with a comprehensive
 SHAP analysis.
 
 %%----------------------------------------------------------
-\section{Dataset}
+\section{数据集}
 
-\subsection{Human ChatGPT Comparison Corpus (HC3)}
+\subsection{Human ChatGPT Comparison Corpus（HC3）}
 
 We use the HC3 dataset~\cite{guo2023hc3} as our \emph{single, deep-analysed} corpus,
 covering both English (\textbf{HC3-EN}) and Chinese (\textbf{HC3-ZH}) subsets.
@@ -144,7 +127,7 @@ and 26\,903 ChatGPT answers across five domain splits:
 \textit{open\_qa}, \textit{baike}, \textit{nlpcc\_dbqa}, \textit{medicine},
 \textit{finance}, \textit{psychology}, and \textit{law}.
 
-\subsection{Preprocessing and Sampling}
+\subsection{预处理与采样}
 
 All answers shorter than 30 characters (English) or 20 characters (Chinese) are
 discarded to remove near-empty responses.
@@ -155,7 +138,7 @@ The final splits are summarized in Table~\ref{tab:dataset}.
 
 \begin{table}[h]
 \centering
-\caption{Dataset statistics after preprocessing and stratified sampling.}
+\caption{预处理与分层采样后的数据集统计。}
 \label{tab:dataset}
 \small
 \begin{tabular}{lcccc}
@@ -171,13 +154,13 @@ Test  (20\%) & ZH & 1000 & 1000 & 2000 \\
 \end{table}
 
 %%----------------------------------------------------------
-\section{Feature Engineering}
+\section{特征工程}
 
 Our feature space is organized into six interpretable categories.
 English texts yield 51 raw features; Chinese texts yield 46, reflecting the
 language-specific adaptations described below.
 
-\subsection{Category 1: Vocabulary Richness}
+\subsection{类别一：词汇丰富度}
 
 Lexical diversity measures the breadth of vocabulary employed by a writer.
 
@@ -195,7 +178,7 @@ Lexical diversity measures the breadth of vocabulary employed by a writer.
 For Chinese, word-level (\texttt{ttr\_word}) and character-level (\texttt{ttr\_char})
 TTR are computed separately because Chinese word segmentation is ambiguous.
 
-\subsection{Category 2: Readability}
+\subsection{类别二：可读性}
 
 For English we use four scores from the \texttt{textstat} library:
 Flesch Reading Ease, Flesch-Kincaid Grade Level, average word length (characters),
@@ -204,7 +187,7 @@ For Chinese, which lacks syllabic readability formulae, we substitute proxies:
 average word length in characters, average sentence length in characters, and
 average sentence length in words.
 
-\subsection{Category 3: POS and Syntactic Features}
+\subsection{类别三：词性与句法特征}
 
 Part-of-speech tag ratios capture grammatical style.
 Eight ratios are computed for English (noun, verb, adjective, adverb, conjunction,
@@ -220,7 +203,7 @@ ratio of deep clauses (depth~$>$~5), and average branching factor.
 These capture the hierarchical complexity of clause nesting, which is notably
 higher in AI-generated English.
 
-\subsection{Category 4: Discourse Patterns (Transition Words)}
+\subsection{类别四：话语结构（连接词）}
 
 AI text is hypothesised to overuse structured discourse markers.
 We define 7 sub-categories of transition words (Table~\ref{tab:transitions})
@@ -230,7 +213,7 @@ An aggregate density and a \textit{structured marker ratio}
 
 \begin{table}[h]
 \centering
-\caption{Transition word sub-categories and example markers.}
+\caption{连接词子类别与示例。}
 \label{tab:transitions}
 \small
 \begin{tabular}{ll}
@@ -248,7 +231,7 @@ Hedging      & it is important to note, generally speaking \\
 \end{tabular}
 \end{table}
 
-\subsection{Category 5: Sentiment and Emotion}
+\subsection{类别五：情感与情绪}
 
 For English, VADER sentiment analysis yields compound, neutral, negative,
 and positive scores.
@@ -265,14 +248,14 @@ For Chinese, VADER is unavailable; we instead use a curated positive/negative
 lexicon (20+18 words) and compute analogous ratio and fluctuation features,
 supplemented by exclamation and question mark ratios.
 
-\subsection{Category 6: Text Statistics}
+\subsection{类别六：文本统计特征}
 
 Length (characters, words), sentence count, average sentence length,
 stopword ratio, capitalization ratio (English), unique bigram ratio, digit ratio.
 For Chinese, an additional \textit{four-character phrase ratio} captures usage of
 chengyu (classical idiom phrases), which appear more often in formal human writing.
 
-\subsection{Correlation Filtering}
+\subsection{相关性过滤}
 
 To mitigate multicollinearity and reduce feature dimensionality,
 we compute the pairwise Pearson correlation matrix on the training set and
@@ -283,7 +266,7 @@ and the Chinese space from 46 to \textbf{40} features (Table~\ref{tab:removed}).
 
 \begin{table}[h]
 \centering
-\caption{Features removed by correlation filtering ($|r|{>}0.85$).}
+\caption{相关性过滤移除特征（$|r|{>}0.85$）。}
 \label{tab:removed}
 \small
 \begin{tabular}{ll}
@@ -303,9 +286,9 @@ Chinese (6) & \texttt{avg\_sent\_len}, \texttt{sentiment\_fluctuation}, \\
 \end{table}
 
 %%----------------------------------------------------------
-\section{Experimental Setup}
+\section{实验设置}
 
-\subsection{Models}
+\subsection{模型设置}
 
 Three ensemble tree classifiers are trained:
 
@@ -325,15 +308,15 @@ An 80/20 stratified train-test split (random state 42) is used for all experimen
 Additionally, we report 5-fold stratified cross-validation F1 on the training set
 using LightGBM (100 rounds) to assess stability.
 
-\subsection{Evaluation Metrics}
+\subsection{评价指标}
 
 We report Accuracy, Precision, Recall, F1-Score (macro over both classes), and
 ROC-AUC.
 
 %%----------------------------------------------------------
-\section{Results}
+\section{实验结果}
 
-\subsection{HC3 English}
+\subsection{HC3 英文子集}
 
 Table~\ref{tab:en_results} reports test-set performance for all three models.
 XGBoost achieves the best overall result: \textbf{95.1\%} accuracy,
@@ -343,7 +326,7 @@ confirming the result is stable and not a lucky train-test split.
 
 \begin{table}[h]
 \centering
-\caption{Test-set performance on HC3-EN (2000 samples).}
+\caption{HC3-EN 测试集结果（2000 样本）。}
 \label{tab:en_results}
 \small
 \begin{tabular}{lccccc}
@@ -359,7 +342,7 @@ LightGBM      & 0.9490 & 0.9554 & \textbf{0.9420} & 0.9486 & 0.9887 \\
 \end{tabular}
 \end{table}
 
-\subsection{HC3 Chinese}
+\subsection{HC3 中文子集}
 
 Results on Chinese (Table~\ref{tab:zh_results}) are slightly lower, reflecting the
 harder linguistic disambiguation problem. LightGBM edges XGBoost:
@@ -368,7 +351,7 @@ The 5-fold CV mean F1 of 0.9165 (±0.0056) is equally stable.
 
 \begin{table}[h]
 \centering
-\caption{Test-set performance on HC3-ZH (2000 samples).}
+\caption{HC3-ZH 测试集结果（2000 样本）。}
 \label{tab:zh_results}
 \small
 \begin{tabular}{lccccc}
@@ -384,7 +367,7 @@ LightGBM      & \textbf{0.9205} & \textbf{0.9269} & 0.9130 & \textbf{0.9199} & 0
 \end{tabular}
 \end{table}
 
-\subsection{Cross-Language Comparison}
+\subsection{跨语言对比}
 
 English is harder to fool the detector in: the XGBoost model reaches 95.1\% vs.\
 92.1\% for Chinese. One likely factor is the availability of dependency parse features
@@ -393,9 +376,9 @@ Chinese compensates with richer POS taxonomy (jieba) and character-level feature
 unavailable in English.
 
 %%----------------------------------------------------------
-\section{SHAP Attribution Analysis}
+\section{SHAP 归因分析}
 
-\subsection{Top Features by SHAP Value}
+\subsection{SHAP 重要特征排序}
 
 We apply TreeExplainer~\cite{lundberg2017shap} to the XGBoost model on a 500-sample
 subset of the test set. Table~\ref{tab:shap_en} and Table~\ref{tab:shap_zh} list the
@@ -404,7 +387,7 @@ their effect on the ``AI'' class probability.
 
 \begin{table}[h]
 \centering
-\caption{Top-10 SHAP features for HC3-EN (XGBoost).}
+\caption{HC3-EN（XGBoost）SHAP Top-10 特征。}
 \label{tab:shap_en}
 \small
 \begin{tabular}{clcc}
@@ -427,7 +410,7 @@ their effect on the ``AI'' class probability.
 
 \begin{table}[h]
 \centering
-\caption{Top-10 SHAP features for HC3-ZH (XGBoost).}
+\caption{HC3-ZH（XGBoost）SHAP Top-10 特征。}
 \label{tab:shap_zh}
 \small
 \begin{tabular}{clcc}
@@ -448,7 +431,7 @@ their effect on the ``AI'' class probability.
 \end{tabular}
 \end{table}
 
-\subsection{Feature Group Importance}
+\subsection{特征组重要性}
 
 Table~\ref{tab:group} aggregates SHAP values by the six feature categories.
 For English, \textit{Text Statistics} dominates (26.6\%), followed by
@@ -458,7 +441,7 @@ diagnostic power of the jieba POS taxonomy.
 
 \begin{table}[h]
 \centering
-\caption{Feature group SHAP contribution.}
+\caption{特征组 SHAP 贡献占比。}
 \label{tab:group}
 \small
 \begin{tabular}{lcc}
@@ -477,7 +460,7 @@ Readability            & 5.2  & 6.8  \\
 \end{tabular}
 \end{table}
 
-\subsection{Multi-Model Feature Importance Consensus}
+\subsection{多模型特征重要性共识}
 
 To verify that the SHAP ranking is not model-specific, we rank features by impurity-based
 importance in all three models and compute a consensus rank (sum of ranks; lower is better).
@@ -487,7 +470,7 @@ strongly validating its diagnostic power.
 
 \begin{table}[h]
 \centering
-\caption{Multi-model consensus (HC3-EN). ★★★: top-tier consensus.}
+\caption{多模型共识（HC3-EN）。★★★ 表示最高共识等级。}
 \label{tab:consensus_en}
 \small
 \begin{tabular}{lcccc}
@@ -506,52 +489,52 @@ strongly validating its diagnostic power.
 \end{table}
 
 %%----------------------------------------------------------
-\section{Key Findings and Discussion}
+\section{关键发现与讨论}
 
-\paragraph{Finding 1: Bigram repetition is the universal AI fingerprint.}
+\paragraph{发现 1：二元词组重复是通用 AI 指纹。}
 \texttt{unique\_bigram\_ratio} (higher in AI) ranks first by SHAP in both languages
 and is the only ★★★ consensus feature in both English and Chinese models.
 ChatGPT generates text with more repetitive, formulaic word-pair combinations
 than human writers across all domains.
 
-\paragraph{Finding 2: Syntactic complexity distinguishes AI in English.}
+\paragraph{发现 2：英文中句法复杂度具有显著区分力。}
 Average dependency tree depth (\texttt{dep\_depth\_avg}) is the \#2 feature in English,
 contributing 13.3\% of group SHAP. AI-generated English text features significantly
 deeper clause hierarchies—subordinate clauses nested within subordinate clauses—a
 pattern consistent with ChatGPT's instruction-following optimization for completeness.
 
-\paragraph{Finding 3: POS profile drives Chinese detection.}
+\paragraph{发现 3：中文检测主要由词性分布驱动。}
 In Chinese, POS \& Syntax features collectively account for 26.7\% of total SHAP.
 Humans use more adverbs (\texttt{adv\_ratio\_zh} $\downarrow$ in AI), reflecting
 colloquial hedging and emotional intensification, while AI overuses conjunctions
 (\texttt{conj\_ratio\_zh} $\uparrow$ in AI) to enforce explicit logical structure.
 
-\paragraph{Finding 4: Vocabulary diversity is consistently lower in AI text.}
+\paragraph{发现 4：AI 文本词汇多样性持续偏低。}
 Both \texttt{hapax\_ratio} and \texttt{vocab\_density} are negatively associated with
 AI text across both languages. Despite ChatGPT's vast training vocabulary, its
 output reuses a more constrained lexical set within any given response, possibly due
 to next-token prediction converging to high-probability, domain-common words.
 
-\paragraph{Finding 5: Human writing shows more sentence-length variability.}
+\paragraph{发现 5：人类文本句长波动更大。}
 \texttt{sent\_len\_cv} (coefficient of variation of sentence lengths) is lower in AI text
 in both languages, indicating that ChatGPT tends to produce sentences of more uniform
 length—another manifestation of its ``machine-flavored'' regularity.
 
-\paragraph{Finding 6: Transition/discourse features confirm AI's structured rhetoric.}
+\paragraph{发现 6：连接与话语特征验证 AI 结构化表达倾向。}
 Hedging expressions (\texttt{trans\_hedging}) rank \#8 in Chinese SHAP, confirming
 that phrases like ``\zhtext{值得注意的是}{值得注意的是}'' (``it is worth noting'') and ``\zhtext{一般来说}{一般来说}''
 (``generally speaking'') are disproportionately frequent in AI text.
 Collectively, transition word features contribute 8.5--8.8\% of total SHAP,
 a modest but consistent contribution.
 
-\paragraph{Sentiment flatness: a removed-but-valid signal.}
+\paragraph{情绪平坦性：虽被过滤但有效的信号。}
 \texttt{sentiment\_fluctuation} was removed by correlation filtering in both languages
 because it correlates ($|r|{>}0.85$) with other sentiment statistics.
 However, \texttt{sentiment\_neutrality} (higher in AI) survives and contributes to the
 Sentiment \& Emotion group. This supports the hypothesis that AI text lacks genuine
 emotional variation—the well-documented ``machine flavor'' of tonally flat prose.
 
-\paragraph{Comparison to neural baselines.}
+\paragraph{与神经网络基线对比。}
 Our 92--95\% accuracy using only hand-crafted features compares favorably to
 the HC3 baseline detectors: Guo et al.\ report $\sim$98.8\% F1 with fine-tuned
 RoBERTa~\cite{guo2023hc3}, a 3--7\% gap that is the price of full interpretability.
@@ -560,7 +543,7 @@ identifies the specific linguistic features driving each decision, and requires
 no GPU infrastructure at inference time.
 
 %%----------------------------------------------------------
-\section{Conclusion}
+\section{结论}
 
 We presented an interpretable, feature-engineering-first pipeline for bilingual
 AIGC detection using the HC3 corpus.
@@ -576,7 +559,7 @@ without black-box deep learning. The feature taxonomy and SHAP methodology devel
 here can readily be extended to new languages, new LLMs, and domain-specific
 detection scenarios.
 
-\paragraph{Limitations and Future Work.}
+\paragraph{局限性与未来工作。}
 The current feature set does not model \emph{topic or domain distribution} shifts;
 future work should evaluate cross-domain generalization.
 Dependency parsing is available for English only; adding a Chinese dependency parser
@@ -585,43 +568,44 @@ As LLMs evolve, the feature thresholds may drift; periodic recalibration will be
 
 %%----------------------------------------------------------
 \begin{acks}
-We thank the HC3 dataset contributors (Guo et al.) for making their corpus
-publicly available, enabling rigorous reproducible research in AIGC detection.
+感谢 HC3 数据集贡献者（Guo 等）公开语料，为 AIGC 检测提供了可复现研究基础。
 \end{acks}
 
 %%----------------------------------------------------------
+\renewcommand{\refname}{参考文献}
+\renewcommand{\bibname}{参考文献}
 \bibliographystyle{ACM-Reference-Format}
 \begin{thebibliography}{9}
 
 \bibitem{guo2023hc3}
 Biyang Guo, Xin Zhang, Ziyuan Wang, Minqi Jiang, Jinran Nie, Yuxuan Ding, Jianwei Yue, and Yupeng Wu.
 \newblock How Close is ChatGPT to Human Experts? Comparison Corpus, Evaluation, and Detection.
-\newblock \textit{arXiv preprint arXiv:2301.07597}, 2023.
+\newblock \textit{arXiv 预印本 arXiv:2301.07597}, 2023。
 
 \bibitem{mitchell2023detectgpt}
 Eric Mitchell, Yoonho Lee, Alexander Khazatsky, Christopher D.\ Manning, and Chelsea Finn.
 \newblock DetectGPT: Zero-Shot Machine-Generated Text Detection using Probability Curvature.
-\newblock In \textit{Proceedings of ICML}, 2023.
+\newblock 载于 \textit{ICML 会议论文集}, 2023。
 
 \bibitem{gehrmann2019gltr}
 Sebastian Gehrmann, Hendrik Strobelt, and Alexander M.\ Rush.
 \newblock GLTR: Statistical Detection and Visualization of Generated Text.
-\newblock In \textit{Proceedings of ACL Demo Track}, 2019.
+\newblock 载于 \textit{ACL Demo Track 论文集}, 2019。
 
 \bibitem{lundberg2017shap}
 Scott M.\ Lundberg and Su-In Lee.
 \newblock A Unified Approach to Interpreting Model Predictions.
-\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2017.
+\newblock 载于 \textit{NeurIPS 会议论文集}, 2017。
 
 \bibitem{juola2006}
 Patrick Juola.
 \newblock Authorship Attribution.
-\newblock \textit{Foundations and Trends in Information Retrieval}, 1(3):233--334, 2006.
+\newblock \textit{Foundations and Trends in Information Retrieval}, 1(3):233--334, 2006。
 
 \bibitem{bhatt2023stylometric}
 Gaurav Bhatt, Bhavna Jain, and Sanjay Chaudhary.
 \newblock Stylometric Detection of AI-Generated Text in Twitter Timelines.
-\newblock \textit{arXiv preprint arXiv:2303.03697}, 2023.
+\newblock \textit{arXiv 预印本 arXiv:2303.03697}, 2023。
 
 \end{thebibliography}
 
