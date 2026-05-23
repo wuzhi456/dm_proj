@@ -39,8 +39,8 @@
 从词汇丰富度、可读性、词性与句法、依存深度、话语连接与情感情绪六大维度提取每种语言 46--51 个手工特征。
 通过皮尔逊相关性过滤（$|r|{>}0.85$）去除冗余后，训练并比较 Random Forest、XGBoost、LightGBM 三类集成树模型。
 同时结合 SHAP 与多模型特征重要性共识解释模型决策。
-实验结果表明，仅用手工特征即可在英文上达到 \textbf{95.1\%} Accuracy / F1\,=\,0.9506（AUC\,=\,0.9898），
-在中文上达到 \textbf{92.1\%} Accuracy / F1\,=\,0.9199（AUC\,=\,0.9779）。
+实验结果表明，仅用手工特征即可在英文上达到 \textbf{95.1\%} 准确率 / F1\,=\,0.9506（AUC\,=\,0.9898），
+在中文上达到 \textbf{92.1\%} 准确率 / F1\,=\,0.9199（AUC\,=\,0.9779）。
 归因分析显示，二元词组重复、句法复杂度与词汇密度是最稳定、最具判别力的 AIGC 语言指纹。
 \end{abstract}
 
@@ -51,90 +51,74 @@
 %%----------------------------------------------------------
 \section{引言}
 
-Since its public release in November 2022, ChatGPT has demonstrated the ability
-to produce fluent, coherent text across virtually any domain, challenging the
-long-standing assumption that polished writing is exclusively a human skill.
-While this capability unlocks tremendous productivity gains, it simultaneously
-introduces pressing social risks: academic fraud, large-scale generation of
-misinformation, and the erosion of trust in digital content~\cite{guo2023hc3}.
+自 2022 年 11 月公开发布以来，ChatGPT 展现出在几乎所有领域生成流畅、连贯文本的能力，
+打破了“高质量写作仅属于人类”的传统认知。
+这一能力在提升生产效率的同时，也带来了显著风险：学术不端、规模化虚假信息生成，
+以及数字内容可信度下降~\cite{guo2023hc3}。
 
-Existing AIGC detectors largely fall into two families.
-\textit{Neural detectors} fine-tune pre-trained language models
-(e.g., RoBERTa, DeBERTa) on labeled corpora and achieve near-ceiling accuracy
-but are opaque, computationally expensive, and brittle to domain shift.
-\textit{Zero-shot statistical methods} (e.g., DetectGPT~\cite{mitchell2023detectgpt},
-GLTR~\cite{gehrmann2019gltr}) exploit log-probability perturbations from the generating
-model itself, but require white-box access to the LLM.
+现有 AIGC 检测方法大体可分为两类：
+\textit{神经网络检测器}通过在标注语料上微调预训练语言模型（如 RoBERTa、DeBERTa）
+获得接近上限的精度，但可解释性弱、计算成本高，且对领域迁移较敏感；
+\textit{统计/零样本方法}（如 DetectGPT~\cite{mitchell2023detectgpt}、GLTR~\cite{gehrmann2019gltr}）
+依赖生成模型概率扰动信号，通常需要对 LLM 的白盒访问。
 
-We argue that neither family adequately serves the practitioner who needs a
-detector that is (a)~\emph{accurate}, (b)~\emph{interpretable}, and
-(c)~\emph{model-agnostic} (applicable without access to the suspected generator).
-Our response is a feature-engineering-first approach that systematically mines the
-statistical and linguistic regularities that separate human from AI writing.
+我们认为，上述两类方法都难以同时满足实际应用对
+（a）准确性、（b）可解释性、（c）模型无关性的要求。
+因此本文采用“特征工程优先”的路线，系统挖掘区分人类文本与 AI 文本的统计与语言学规律。
 
-\paragraph{主要贡献。}
+\paragraph{主要贡献}
 \begin{enumerate}
-\item We construct a rich, \emph{bilingual} (English + Chinese) feature space
-      of 46--51 linguistic features organized into six interpretable categories.
-\item We demonstrate that gradient-boosted tree classifiers trained on this feature
-      space achieve 92--95\% accuracy on the HC3 benchmark, rivaling fine-tuned
-      neural methods while remaining fully transparent.
-\item We provide the first SHAP-based attribution study on the HC3 corpus that
-      quantitatively ranks which specific feature combinations expose AI text,
-      and we validate the finding with multi-model consensus across three classifiers.
+\item 我们构建了覆盖中英文的双语特征空间：每种语言提取 46--51 个语言学特征，
+      并按六个可解释类别组织。
+\item 我们验证了基于该特征空间训练的集成树模型在 HC3 上可达到 92--95\% 的准确率，
+      在保持可解释性的同时接近神经网络方法表现。
+\item 我们给出了 HC3 上的 SHAP 归因分析，定量刻画“哪些特征组合最能暴露 AI 文本”，
+      并通过三种模型的一致性排序进行交叉验证。
 \end{enumerate}
 
 %%----------------------------------------------------------
 \section{相关工作}
 
-\paragraph{HC3 与语言学分析。}
-Guo et al.~\cite{guo2023hc3} introduced the HC3 dataset and conducted linguistic
-comparisons showing that ChatGPT answers tend to be longer, more neutral in sentiment,
-and richer in discourse connectives.
-Their fine-tuned RoBERTa detector reached $\sim$98.8\% F1 on English
-but offers no interpretability.
+\paragraph{HC3 与语言学分析}
+Guo 等~\cite{guo2023hc3}提出 HC3 数据集，并从语言学角度比较了人类与 ChatGPT 回答，
+指出 ChatGPT 回答通常更长、情绪更中性、连接词更丰富。
+其微调 RoBERTa 检测器在英文上达到约 98.8\% F1，但缺乏可解释性。
 
-\paragraph{统计/零样本检测方法。}
-GLTR~\cite{gehrmann2019gltr} visualises per-token rank distributions from a
-reference LM to expose machine text.
-DetectGPT~\cite{mitchell2023detectgpt} perturbs candidate texts and measures
-log-probability curvature; it needs no training data but requires LLM access.
+\paragraph{统计/零样本检测方法}
+GLTR~\cite{gehrmann2019gltr}通过可视化 token 排名分布识别机器文本；
+DetectGPT~\cite{mitchell2023detectgpt}通过扰动文本并测量对数概率曲率进行检测，
+无需训练数据，但依赖对 LLM 的访问能力。
 
-\paragraph{文体计量与特征工程检测。}
-Stylometric approaches (Type-Token Ratio, Honore's R, readability scores)
-have been applied to authorship attribution for decades~\cite{juola2006}.
-Recent work has adapted these to AIGC detection~\cite{bhatt2023stylometric},
-but most studies focus on English only and do not provide SHAP attribution.
-Our work extends these directions to a bilingual setting with a comprehensive
-SHAP analysis.
+\paragraph{文体计量与特征工程检测}
+基于文体计量的指标（如 Type-Token Ratio、Honore's R、可读性分数）
+已长期用于作者归因~\cite{juola2006}。
+近期研究将其扩展到 AIGC 检测~\cite{bhatt2023stylometric}，
+但多数工作集中于英文，且缺少系统 SHAP 归因。
+本文将该方向扩展到中英双语并进行完整可解释分析。
 
 %%----------------------------------------------------------
 \section{数据集}
 
 \subsection{Human ChatGPT Comparison Corpus（HC3）}
 
-We use the HC3 dataset~\cite{guo2023hc3} as our \emph{single, deep-analysed} corpus,
-covering both English (\textbf{HC3-EN}) and Chinese (\textbf{HC3-ZH}) subsets.
+本文使用 HC3 数据集~\cite{guo2023hc3}作为\emph{单一深度分析语料}，
+覆盖英文子集（\textbf{HC3-EN}）与中文子集（\textbf{HC3-ZH}）。
 
-\paragraph{HC3-EN} collects 24\,322 questions with a total of 58\,546 human answers
-(sourced from Reddit ELI5, WikiQA, Wikipedia, medical dialogues, and financial QA)
-and 26\,903 ChatGPT answers across five domain splits:
-\textit{reddit\_eli5}, \textit{open\_qa}, \textit{wiki\_csai}, \textit{medicine}, and
-\textit{finance}.
+\paragraph{HC3-EN}包含 24\,322 个问题，共 58\,546 条人类回答
+（来源包括 Reddit ELI5、WikiQA、Wikipedia、医疗问答与金融问答），
+以及 26\,903 条 ChatGPT 回答，覆盖五个领域切分：
+\textit{reddit\_eli5}、\textit{open\_qa}、\textit{wiki\_csai}、\textit{medicine}、\textit{finance}。
 
-\paragraph{HC3-ZH} collects 12\,853 questions with 22\,259 human answers and
-17\,522 ChatGPT answers across seven domain splits:
-\textit{open\_qa}, \textit{baike}, \textit{nlpcc\_dbqa}, \textit{medicine},
-\textit{finance}, \textit{psychology}, and \textit{law}.
+\paragraph{HC3-ZH}包含 12\,853 个问题、22\,259 条人类回答和 17\,522 条 ChatGPT 回答，
+覆盖七个领域切分：\textit{open\_qa}、\textit{baike}、\textit{nlpcc\_dbqa}、\textit{medicine}、
+\textit{finance}、\textit{psychology}、\textit{law}。
 
 \subsection{预处理与采样}
 
-All answers shorter than 30 characters (English) or 20 characters (Chinese) are
-discarded to remove near-empty responses.
-To keep runtime tractable and class balance exact,
-we draw a stratified random sample of 10\,000 texts (5\,000 human, 5\,000 AI)
-from each language using a fixed seed (42).
-The final splits are summarized in Table~\ref{tab:dataset}.
+为去除近乎空文本，过滤长度小于 30 字符（英文）或 20 字符（中文）的回答。
+为控制运行成本并保持类别严格平衡，使用固定随机种子（42）在每种语言中
+分层抽样 10\,000 条文本（5\,000 人类、5\,000 AI）。
+最终划分见表~\ref{tab:dataset}。
 
 \begin{table}[h]
 \centering
@@ -143,12 +127,12 @@ The final splits are summarized in Table~\ref{tab:dataset}.
 \small
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Split} & \textbf{Lang.} & \textbf{Human} & \textbf{AI} & \textbf{Total} \\
+\textbf{划分} & \textbf{语言} & \textbf{人类} & \textbf{AI} & \textbf{总计} \\
 \midrule
-Train (80\%) & EN & 4000 & 4000 & 8000 \\
-Test  (20\%) & EN & 1000 & 1000 & 2000 \\
-Train (80\%) & ZH & 4000 & 4000 & 8000 \\
-Test  (20\%) & ZH & 1000 & 1000 & 2000 \\
+训练集 (80\%) & EN & 4000 & 4000 & 8000 \\
+测试集 (20\%) & EN & 1000 & 1000 & 2000 \\
+训练集 (80\%) & ZH & 4000 & 4000 & 8000 \\
+测试集 (20\%) & ZH & 1000 & 1000 & 2000 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -156,60 +140,49 @@ Test  (20\%) & ZH & 1000 & 1000 & 2000 \\
 %%----------------------------------------------------------
 \section{特征工程}
 
-Our feature space is organized into six interpretable categories.
-English texts yield 51 raw features; Chinese texts yield 46, reflecting the
-language-specific adaptations described below.
+本文特征空间由六类可解释特征构成。
+英文文本提取 51 个原始特征，中文文本提取 46 个原始特征，差异来自语言适配策略。
 
 \subsection{类别一：词汇丰富度}
 
-Lexical diversity measures the breadth of vocabulary employed by a writer.
+词汇丰富度用于衡量作者词汇使用的广度。
 
 \begin{itemize}
-\item \textbf{Type-Token Ratio (TTR)}: $\text{TTR} = V / N$ where $V$ is the number
-  of unique tokens and $N$ the total token count.
-  AI text tends to have lower TTR due to formulaic phrasing.
-\item \textbf{Hapax Legomena Ratio}: the fraction of words appearing exactly once,
-  reflecting authentic creative choices unique to human writers.
-\item \textbf{Honore's R}: $R = 100 \cdot \log N / (1 - V_1/V)$ where $V_1$ is the
-  hapax count. This statistic penalises vocabulary reuse more heavily than TTR.
-\item \textbf{Vocabulary Density}: $V / \sqrt{N}$, a length-normalised diversity score.
+\item \textbf{Type-Token Ratio (TTR)}：$\text{TTR} = V / N$，其中 $V$ 为不重复词数，$N$ 为总词数。
+  AI 文本常因模板化表达而呈现更低 TTR。
+\item \textbf{Hapax Legomena Ratio}：仅出现一次词汇的占比，反映个体化表达程度。
+\item \textbf{Honore's R}：$R = 100 \cdot \log N / (1 - V_1/V)$，其中 $V_1$ 为 hapax 数。
+  该指标比 TTR 更强地惩罚词汇复用。
+\item \textbf{Vocabulary Density}：$V / \sqrt{N}$，长度归一化的词汇多样性分数。
 \end{itemize}
 
-For Chinese, word-level (\texttt{ttr\_word}) and character-level (\texttt{ttr\_char})
-TTR are computed separately because Chinese word segmentation is ambiguous.
+中文同时计算词级（\texttt{ttr\_word}）与字级（\texttt{ttr\_char}）TTR，
+以应对中文分词边界不唯一的问题。
 
 \subsection{类别二：可读性}
 
-For English we use four scores from the \texttt{textstat} library:
-Flesch Reading Ease, Flesch-Kincaid Grade Level, average word length (characters),
-and average syllables per word.
-For Chinese, which lacks syllabic readability formulae, we substitute proxies:
-average word length in characters, average sentence length in characters, and
-average sentence length in words.
+英文采用 \texttt{textstat} 的四项指标：
+Flesch Reading Ease、Flesch-Kincaid Grade Level、平均词长（字符）与平均音节数。
+中文缺乏成熟音节可读性公式，因此以代理指标替代：
+平均词长（字符）、平均句长（字符）、平均句长（词数）。
 
 \subsection{类别三：词性与句法特征}
 
-Part-of-speech tag ratios capture grammatical style.
-Eight ratios are computed for English (noun, verb, adjective, adverb, conjunction,
-determiner, punctuation, pronoun) via NLTK's averaged perceptron tagger.
-Chinese POS tagging uses jieba's hidden Markov model tagger with equivalent
-categories (noun \textit{n}/\textit{nr}/\textit{ns}/\textit{nt}/\textit{nz},
-verb \textit{v}/\textit{vd}/\textit{vn}, etc.).
+词性比例可刻画语法风格。
+英文使用 NLTK 平均感知机标注器计算 8 类词性比例
+（名词、动词、形容词、副词、连词、限定词、标点、代词）。
+中文使用 jieba 隐马尔可夫词性标注，并映射到对应类别
+（名词 \textit{n}/\textit{nr}/\textit{ns}/\textit{nt}/\textit{nz}，动词 \textit{v}/\textit{vd}/\textit{vn} 等）。
 
-Additionally, for English only, we parse each text with spaCy's dependency parser
-and compute five \textbf{dependency tree depth} features:
-maximum depth, average depth, standard deviation of depth,
-ratio of deep clauses (depth~$>$~5), and average branching factor.
-These capture the hierarchical complexity of clause nesting, which is notably
-higher in AI-generated English.
+此外，英文文本进一步使用 spaCy 依存句法分析器提取 5 个\textbf{依存树深度}特征：
+最大深度、平均深度、深度标准差、深层子句比例（depth~$>$~5）、平均分支因子。
+这些特征用于刻画层级嵌套复杂度，在英文 AI 文本中尤为显著。
 
 \subsection{类别四：话语结构（连接词）}
 
-AI text is hypothesised to overuse structured discourse markers.
-We define 7 sub-categories of transition words (Table~\ref{tab:transitions})
-and compute per-category frequency normalized per 100 words.
-An aggregate density and a \textit{structured marker ratio}
-(sequential + conclusive markers) are also computed.
+我们假设 AI 文本更倾向于使用结构化话语标记。
+据此定义 7 类连接词（表~\ref{tab:transitions}），并计算每百词归一化频率。
+同时计算总体连接密度与\textit{结构化标记比}（顺序类 + 总结类）。
 
 \begin{table}[h]
 \centering
@@ -218,51 +191,44 @@ An aggregate density and a \textit{structured marker ratio}
 \small
 \begin{tabular}{ll}
 \toprule
-\textbf{Category} & \textbf{Examples (EN)} \\
+\textbf{类别} & \textbf{示例（英文）} \\
 \midrule
-Sequential   & firstly, secondly, finally \\
-Conclusive   & in conclusion, to summarize, overall \\
-Contrastive  & however, nevertheless, on the other hand \\
-Additive     & moreover, furthermore, in addition \\
-Causal       & therefore, consequently, thus \\
-Exemplifying & for example, for instance, such as \\
-Hedging      & it is important to note, generally speaking \\
+顺序推进类 & firstly, secondly, finally \\
+总结收束类 & in conclusion, to summarize, overall \\
+转折对比类 & however, nevertheless, on the other hand \\
+并列补充类 & moreover, furthermore, in addition \\
+因果推导类 & therefore, consequently, thus \\
+举例说明类 & for example, for instance, such as \\
+缓和限定类 & it is important to note, generally speaking \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{类别五：情感与情绪}
 
-For English, VADER sentiment analysis yields compound, neutral, negative,
-and positive scores.
-An \textit{emotion word ratio} is computed using a fixed lexicon of 18 emotionally
-charged words.
-Three \textit{per-sentence} statistics quantify emotional variability across the text:
-fluctuation (standard deviation of per-sentence compound scores),
-range (max~$-$~min), and \textit{flip ratio} (fraction of consecutive sentences where
-sentiment polarity changes).
-The intuition is that human writing exhibits more affective variation—the
-``machine flavor'' of AI text is its flat, consistently neutral register.
+英文使用 VADER 计算 compound、neutral、negative、positive 分数。
+基于固定 18 词情绪词典构建\textit{emotion word ratio}。
+并在句子级计算 3 项波动特征：
+fluctuation（句级 compound 标准差）、range（最大值减最小值）、
+\textit{flip ratio}（相邻句情绪极性变化比例）。
+直觉上，人类文本情绪起伏更明显，而 AI 文本往往更“平”。
 
-For Chinese, VADER is unavailable; we instead use a curated positive/negative
-lexicon (20+18 words) and compute analogous ratio and fluctuation features,
-supplemented by exclamation and question mark ratios.
+中文由于不适用 VADER，采用人工整理的正负向词典（20+18 词）
+构造对应比例与波动特征，并补充感叹号、问号比例。
 
 \subsection{类别六：文本统计特征}
 
-Length (characters, words), sentence count, average sentence length,
-stopword ratio, capitalization ratio (English), unique bigram ratio, digit ratio.
-For Chinese, an additional \textit{four-character phrase ratio} captures usage of
-chengyu (classical idiom phrases), which appear more often in formal human writing.
+包括长度（字符/词）、句子数、平均句长、停用词比例、
+大写比例（英文）、二元组唯一率、数字比例。
+中文额外加入\textit{四字短语比例}以刻画成语等固定表达，
+该特征在人类正式文本中更常见。
 
 \subsection{相关性过滤}
 
-To mitigate multicollinearity and reduce feature dimensionality,
-we compute the pairwise Pearson correlation matrix on the training set and
-remove one feature from each pair with $|r|{>}0.85$,
-retaining the member with higher variance.
-This step reduces the English feature space from 51 to \textbf{42} features
-and the Chinese space from 46 to \textbf{40} features (Table~\ref{tab:removed}).
+为降低多重共线性并压缩维度，
+在训练集上计算特征两两 Pearson 相关矩阵，
+对 $|r|{>}0.85$ 的特征对移除其中一个，并保留方差更高者。
+该步骤将英文特征从 51 降至 \textbf{42}，中文从 46 降至 \textbf{40}（见表~\ref{tab:removed}）。
 
 \begin{table}[h]
 \centering
@@ -271,14 +237,14 @@ and the Chinese space from 46 to \textbf{40} features (Table~\ref{tab:removed}).
 \small
 \begin{tabular}{ll}
 \toprule
-\textbf{Language} & \textbf{Removed features} \\
+\textbf{语言} & \textbf{移除特征} \\
 \midrule
-English (9) & \texttt{sentence\_count}, \texttt{ttr}, \texttt{avg\_syllables\_per\_word}, \\
+英文 (9) & \texttt{sentence\_count}, \texttt{ttr}, \texttt{avg\_syllables\_per\_word}, \\
             & \texttt{flesch\_kincaid\_grade}, \texttt{avg\_sent\_len}, \\
             & \texttt{sentiment\_fluctuation}, \texttt{trans\_sequential}, \\
             & \texttt{text\_len\_words}, \texttt{avg\_para\_len} \\
 \midrule
-Chinese (6) & \texttt{avg\_sent\_len}, \texttt{sentiment\_fluctuation}, \\
+中文 (6) & \texttt{avg\_sent\_len}, \texttt{sentiment\_fluctuation}, \\
             & \texttt{trans\_sequential}, \texttt{text\_len\_words}, \\
             & \texttt{avg\_sent\_len\_words}, \texttt{ttr\_word} \\
 \bottomrule
@@ -290,39 +256,36 @@ Chinese (6) & \texttt{avg\_sent\_len}, \texttt{sentiment\_fluctuation}, \\
 
 \subsection{模型设置}
 
-Three ensemble tree classifiers are trained:
+本文训练三类集成树分类器：
 
-\textbf{Random Forest (RF):}
-200 trees, max depth 15, minimum samples per leaf 10, trained in parallel.
+\textbf{Random Forest (RF)：}
+树数量 200，最大深度 15，叶节点最小样本数 10，并行训练。
 
-\textbf{XGBoost:}
-200 rounds, max depth 6, learning rate 0.1, subsample and column-subsample 0.8,
-log-loss evaluation metric.
+\textbf{XGBoost：}
+训练轮数 200，最大深度 6，学习率 0.1，样本与特征子采样比例均为 0.8，
+评价损失为 log-loss。
 
-\textbf{LightGBM:}
-200 rounds, max depth 8, learning rate 0.1, subsample and column-subsample 0.8.
+\textbf{LightGBM：}
+训练轮数 200，最大深度 8，学习率 0.1，样本与特征子采样比例均为 0.8。
 
-All features are standardized with zero mean and unit variance (\texttt{StandardScaler})
-before training.
-An 80/20 stratified train-test split (random state 42) is used for all experiments.
-Additionally, we report 5-fold stratified cross-validation F1 on the training set
-using LightGBM (100 rounds) to assess stability.
+训练前使用 \texttt{StandardScaler} 对所有特征做零均值、单位方差标准化。
+所有实验统一采用 80/20 分层训练-测试划分（random state = 42）。
+此外在训练集上报告 LightGBM（100 轮）的 5 折分层交叉验证 F1，
+用于评估稳定性。
 
 \subsection{评价指标}
 
-We report Accuracy, Precision, Recall, F1-Score (macro over both classes), and
-ROC-AUC.
+评价指标包括 Accuracy、Precision、Recall、F1-Score（双类别宏平均）与 ROC-AUC。
 
 %%----------------------------------------------------------
 \section{实验结果}
 
 \subsection{HC3 英文子集}
 
-Table~\ref{tab:en_results} reports test-set performance for all three models.
-XGBoost achieves the best overall result: \textbf{95.1\%} accuracy,
-F1~=~0.9506, AUC~=~0.9898.
-LightGBM is a close second with a 5-fold CV mean F1 of 0.9394 (±0.0040),
-confirming the result is stable and not a lucky train-test split.
+表~\ref{tab:en_results}给出三种模型在测试集上的表现。
+XGBoost 取得最佳结果：\textbf{95.1\%} Accuracy、F1~=~0.9506、AUC~=~0.9898。
+LightGBM 略低，但 5 折交叉验证平均 F1 为 0.9394（±0.0040），
+说明结果稳定而非偶然划分导致。
 
 \begin{table}[h]
 \centering
@@ -331,7 +294,7 @@ confirming the result is stable and not a lucky train-test split.
 \small
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} & \textbf{AUC} \\
+\textbf{模型} & \textbf{准确率} & \textbf{精确率} & \textbf{召回率} & \textbf{F1} & \textbf{AUC} \\
 \midrule
 Random Forest & 0.9300 & 0.9479 & 0.9100 & 0.9286 & 0.9798 \\
 XGBoost       & \textbf{0.9510} & \textbf{0.9583} & 0.9430 & \textbf{0.9506} & \textbf{0.9898} \\
@@ -344,10 +307,9 @@ LightGBM      & 0.9490 & 0.9554 & \textbf{0.9420} & 0.9486 & 0.9887 \\
 
 \subsection{HC3 中文子集}
 
-Results on Chinese (Table~\ref{tab:zh_results}) are slightly lower, reflecting the
-harder linguistic disambiguation problem. LightGBM edges XGBoost:
-\textbf{92.1\%} accuracy, F1~=~0.9199, AUC~=~0.9779.
-The 5-fold CV mean F1 of 0.9165 (±0.0056) is equally stable.
+中文结果（表~\ref{tab:zh_results}）整体略低，说明中文语义歧义与表达多样性带来更高检测难度。
+LightGBM 略优于 XGBoost，达到 \textbf{92.1\%} Accuracy、F1~=~0.9199、AUC~=~0.9779；
+其 5 折交叉验证平均 F1 为 0.9165（±0.0056），同样稳定。
 
 \begin{table}[h]
 \centering
@@ -356,7 +318,7 @@ The 5-fold CV mean F1 of 0.9165 (±0.0056) is equally stable.
 \small
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} & \textbf{AUC} \\
+\textbf{模型} & \textbf{准确率} & \textbf{精确率} & \textbf{召回率} & \textbf{F1} & \textbf{AUC} \\
 \midrule
 Random Forest & 0.9000 & 0.9049 & 0.8940 & 0.8994 & 0.9665 \\
 XGBoost       & 0.9200 & 0.9242 & 0.9150 & 0.9196 & 0.9782 \\
@@ -369,21 +331,20 @@ LightGBM      & \textbf{0.9205} & \textbf{0.9269} & 0.9130 & \textbf{0.9199} & 0
 
 \subsection{跨语言对比}
 
-English is harder to fool the detector in: the XGBoost model reaches 95.1\% vs.\
-92.1\% for Chinese. One likely factor is the availability of dependency parse features
-(spaCy, EN only) which contribute 13.3\% of total SHAP importance.
-Chinese compensates with richer POS taxonomy (jieba) and character-level features
-unavailable in English.
+从结果看，英文更容易被准确检测：XGBoost 在英文上达到 95.1\%，而中文为 92.1\%。
+可能原因之一是英文额外使用了依存句法特征（仅 EN 可用 spaCy），
+该特征组贡献 13.3\% 的 SHAP 重要性；
+中文则依赖更细粒度的 jieba 词性体系与字级特征进行补偿。
 
 %%----------------------------------------------------------
 \section{SHAP 归因分析}
 
 \subsection{SHAP 重要特征排序}
 
-We apply TreeExplainer~\cite{lundberg2017shap} to the XGBoost model on a 500-sample
-subset of the test set. Table~\ref{tab:shap_en} and Table~\ref{tab:shap_zh} list the
-top-10 features ranked by mean $|\text{SHAP}|$ value, together with the direction of
-their effect on the ``AI'' class probability.
+我们对 XGBoost 模型使用 TreeExplainer~\cite{lundberg2017shap}，
+在测试集 500 条样本子集上计算 SHAP 值。
+表~\ref{tab:shap_en} 与表~\ref{tab:shap_zh}给出按平均 $|\text{SHAP}|$ 排序的前 10 个特征，
+并标注其对 ``AI'' 类概率的影响方向。
 
 \begin{table}[h]
 \centering
@@ -392,18 +353,18 @@ their effect on the ``AI'' class probability.
 \small
 \begin{tabular}{clcc}
 \toprule
-\textbf{Rank} & \textbf{Feature} & \textbf{SHAP} & \textbf{Direction} \\
+\textbf{排名} & \textbf{特征} & \textbf{SHAP} & \textbf{方向} \\
 \midrule
-1  & \texttt{unique\_bigram\_ratio}  & 1.4193 & $\uparrow$ in AI \\
-2  & \texttt{dep\_depth\_avg}        & 0.7910 & $\uparrow$ in AI \\
-3  & \texttt{hapax\_ratio}           & 0.6410 & $\downarrow$ in AI \\
-4  & \texttt{adv\_ratio}             & 0.6175 & $\downarrow$ in AI \\
-5  & \texttt{vocab\_density}         & 0.5275 & $\downarrow$ in AI \\
-6  & \texttt{text\_len\_chars}       & 0.5098 & $\downarrow$ in AI \\
-7  & \texttt{stopword\_ratio}        & 0.4575 & $\downarrow$ in AI \\
-8  & \texttt{sent\_len\_cv}          & 0.4020 & $\downarrow$ in AI \\
-9  & \texttt{punct\_ratio}           & 0.3110 & $\downarrow$ in AI \\
-10 & \texttt{paragraph\_count}       & 0.2871 & $\uparrow$ in AI \\
+1  & \texttt{unique\_bigram\_ratio}  & 1.4193 & AI中升高 $\uparrow$ \\
+2  & \texttt{dep\_depth\_avg}        & 0.7910 & AI中升高 $\uparrow$ \\
+3  & \texttt{hapax\_ratio}           & 0.6410 & AI中降低 $\downarrow$ \\
+4  & \texttt{adv\_ratio}             & 0.6175 & AI中降低 $\downarrow$ \\
+5  & \texttt{vocab\_density}         & 0.5275 & AI中降低 $\downarrow$ \\
+6  & \texttt{text\_len\_chars}       & 0.5098 & AI中降低 $\downarrow$ \\
+7  & \texttt{stopword\_ratio}        & 0.4575 & AI中降低 $\downarrow$ \\
+8  & \texttt{sent\_len\_cv}          & 0.4020 & AI中降低 $\downarrow$ \\
+9  & \texttt{punct\_ratio}           & 0.3110 & AI中降低 $\downarrow$ \\
+10 & \texttt{paragraph\_count}       & 0.2871 & AI中升高 $\uparrow$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -415,29 +376,29 @@ their effect on the ``AI'' class probability.
 \small
 \begin{tabular}{clcc}
 \toprule
-\textbf{Rank} & \textbf{Feature} & \textbf{SHAP} & \textbf{Direction} \\
+\textbf{排名} & \textbf{特征} & \textbf{SHAP} & \textbf{方向} \\
 \midrule
-1  & \texttt{unique\_bigram\_ratio}  & 0.7501 & $\uparrow$ in AI \\
-2  & \texttt{vocab\_density}         & 0.6175 & $\downarrow$ in AI \\
-3  & \texttt{adv\_ratio\_zh}         & 0.6094 & $\downarrow$ in AI \\
-4  & \texttt{pronoun\_ratio\_zh}     & 0.5669 & $\uparrow$ in AI \\
-5  & \texttt{sent\_len\_cv}          & 0.5117 & $\downarrow$ in AI \\
-6  & \texttt{conj\_ratio\_zh}        & 0.4234 & $\uparrow$ in AI \\
-7  & \texttt{honore\_r}              & 0.4022 & $\downarrow$ in AI \\
-8  & \texttt{trans\_hedging}         & 0.3764 & $\uparrow$ in AI \\
-9  & \texttt{avg\_para\_len}         & 0.3322 & $\uparrow$ in AI \\
-10 & \texttt{avg\_word\_len\_chars}  & 0.3258 & $\downarrow$ in AI \\
+1  & \texttt{unique\_bigram\_ratio}  & 0.7501 & AI中升高 $\uparrow$ \\
+2  & \texttt{vocab\_density}         & 0.6175 & AI中降低 $\downarrow$ \\
+3  & \texttt{adv\_ratio\_zh}         & 0.6094 & AI中降低 $\downarrow$ \\
+4  & \texttt{pronoun\_ratio\_zh}     & 0.5669 & AI中升高 $\uparrow$ \\
+5  & \texttt{sent\_len\_cv}          & 0.5117 & AI中降低 $\downarrow$ \\
+6  & \texttt{conj\_ratio\_zh}        & 0.4234 & AI中升高 $\uparrow$ \\
+7  & \texttt{honore\_r}              & 0.4022 & AI中降低 $\downarrow$ \\
+8  & \texttt{trans\_hedging}         & 0.3764 & AI中升高 $\uparrow$ \\
+9  & \texttt{avg\_para\_len}         & 0.3322 & AI中升高 $\uparrow$ \\
+10 & \texttt{avg\_word\_len\_chars}  & 0.3258 & AI中降低 $\downarrow$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{特征组重要性}
 
-Table~\ref{tab:group} aggregates SHAP values by the six feature categories.
-For English, \textit{Text Statistics} dominates (26.6\%), followed by
-\textit{POS \& Syntax} (18.1\%) and \textit{Dependency Depth} (13.3\%).
-For Chinese, \textit{POS \& Syntax} leads (26.7\%), reflecting the greater
-diagnostic power of the jieba POS taxonomy.
+表~\ref{tab:group}按六类特征汇总 SHAP 贡献。
+英文中 \textit{Text Statistics} 占比最高（26.6\%），其后为 \textit{POS \& Syntax}（18.1\%）
+与 \textit{Dependency Depth}（13.3\%）；
+中文中 \textit{POS \& Syntax} 占比最高（26.7\%），
+体现了 jieba 词性体系在中文检测中的区分能力。
 
 \begin{table}[h]
 \centering
@@ -446,7 +407,7 @@ diagnostic power of the jieba POS taxonomy.
 \small
 \begin{tabular}{lcc}
 \toprule
-\textbf{Feature Group} & \textbf{EN (\%)} & \textbf{ZH (\%)} \\
+\textbf{特征组} & \textbf{EN (\%)} & \textbf{ZH (\%)} \\
 \midrule
 Text Statistics        & 26.6 & 19.1 \\
 POS \& Syntax          & 18.1 & 26.7 \\
@@ -462,11 +423,12 @@ Readability            & 5.2  & 6.8  \\
 
 \subsection{多模型特征重要性共识}
 
-To verify that the SHAP ranking is not model-specific, we rank features by impurity-based
-importance in all three models and compute a consensus rank (sum of ranks; lower is better).
-Table~\ref{tab:consensus_en} shows the top-7 consensus features for English.
-All three models unanimously rank \texttt{unique\_bigram\_ratio} first (★★★),
-strongly validating its diagnostic power.
+为验证 SHAP 结果是否依赖单一模型，
+我们在三种模型上均使用 impurity-based 重要性排序，
+并以排名和（越低越好）作为共识分数。
+表~\ref{tab:consensus_en}给出英文前 7 个共识特征。
+三种模型均将 \texttt{unique\_bigram\_ratio} 排名第一（★★★），
+进一步证明其诊断价值。
 
 \begin{table}[h]
 \centering
@@ -475,7 +437,7 @@ strongly validating its diagnostic power.
 \small
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Feature} & \textbf{RF} & \textbf{XGB} & \textbf{LGB} & \textbf{Tier} \\
+\textbf{特征} & \textbf{RF} & \textbf{XGB} & \textbf{LGB} & \textbf{等级} \\
 \midrule
 \texttt{unique\_bigram\_ratio} & 1 & 1 & 1 & ★★★ \\
 \texttt{dep\_depth\_avg}       & 3 & 2 & 4 & ★★★ \\
@@ -491,80 +453,68 @@ strongly validating its diagnostic power.
 %%----------------------------------------------------------
 \section{关键发现与讨论}
 
-\paragraph{发现 1：二元词组重复是通用 AI 指纹。}
-\texttt{unique\_bigram\_ratio} (higher in AI) ranks first by SHAP in both languages
-and is the only ★★★ consensus feature in both English and Chinese models.
-ChatGPT generates text with more repetitive, formulaic word-pair combinations
-than human writers across all domains.
+\paragraph{发现 1：二元词组重复是通用 AI 指纹}
+\texttt{unique\_bigram\_ratio} 在中英文中均位列 SHAP 第一，
+且在多模型共识中属于最高等级特征。
+这表明 ChatGPT 在多领域文本中更容易产生重复、模板化的词对组合。
 
-\paragraph{发现 2：英文中句法复杂度具有显著区分力。}
-Average dependency tree depth (\texttt{dep\_depth\_avg}) is the \#2 feature in English,
-contributing 13.3\% of group SHAP. AI-generated English text features significantly
-deeper clause hierarchies—subordinate clauses nested within subordinate clauses—a
-pattern consistent with ChatGPT's instruction-following optimization for completeness.
+\paragraph{发现 2：英文中句法复杂度具有显著区分力}
+英文中 \texttt{dep\_depth\_avg} 排名第二，贡献 13.3\% 特征组 SHAP。
+AI 英文文本常表现出更深的从句嵌套层级，
+与 ChatGPT 强调“完整性与结构化表达”的生成倾向一致。
 
-\paragraph{发现 3：中文检测主要由词性分布驱动。}
-In Chinese, POS \& Syntax features collectively account for 26.7\% of total SHAP.
-Humans use more adverbs (\texttt{adv\_ratio\_zh} $\downarrow$ in AI), reflecting
-colloquial hedging and emotional intensification, while AI overuses conjunctions
-(\texttt{conj\_ratio\_zh} $\uparrow$ in AI) to enforce explicit logical structure.
+\paragraph{发现 3：中文检测主要由词性分布驱动}
+中文 \textit{POS \& Syntax} 特征组贡献达 26.7\%。
+人类文本更常使用副词（\texttt{adv\_ratio\_zh} 在 AI 中下降），
+体现口语化缓和与情绪增强；AI 文本则更常使用连词
+（\texttt{conj\_ratio\_zh} 在 AI 中升高）以强化显式逻辑。
 
-\paragraph{发现 4：AI 文本词汇多样性持续偏低。}
-Both \texttt{hapax\_ratio} and \texttt{vocab\_density} are negatively associated with
-AI text across both languages. Despite ChatGPT's vast training vocabulary, its
-output reuses a more constrained lexical set within any given response, possibly due
-to next-token prediction converging to high-probability, domain-common words.
+\paragraph{发现 4：AI 文本词汇多样性持续偏低}
+\texttt{hapax\_ratio} 与 \texttt{vocab\_density} 在中英文中都与 AI 类负相关。
+尽管 ChatGPT 拥有大规模训练词汇，其单篇输出仍倾向于收敛到高概率、领域常见词，
+导致局部词汇集合更受限。
 
-\paragraph{发现 5：人类文本句长波动更大。}
-\texttt{sent\_len\_cv} (coefficient of variation of sentence lengths) is lower in AI text
-in both languages, indicating that ChatGPT tends to produce sentences of more uniform
-length—another manifestation of its ``machine-flavored'' regularity.
+\paragraph{发现 5：人类文本句长波动更大}
+\texttt{sent\_len\_cv} 在 AI 文本中普遍更低，
+说明 ChatGPT 更倾向于生成长度均匀的句子，
+这是“机器化文风”的另一种表现。
 
-\paragraph{发现 6：连接与话语特征验证 AI 结构化表达倾向。}
-Hedging expressions (\texttt{trans\_hedging}) rank \#8 in Chinese SHAP, confirming
-that phrases like ``\zhtext{值得注意的是}{值得注意的是}'' (``it is worth noting'') and ``\zhtext{一般来说}{一般来说}''
-(``generally speaking'') are disproportionately frequent in AI text.
-Collectively, transition word features contribute 8.5--8.8\% of total SHAP,
-a modest but consistent contribution.
+\paragraph{发现 6：连接与话语特征验证 AI 结构化表达倾向}
+\texttt{trans\_hedging} 在中文 SHAP 中排名第 8，
+如“值得注意的是”“一般来说”等表达在 AI 文本中更高频。
+整体上，连接词特征贡献约 8.5--8.8\% SHAP，
+虽非最强但稳定有效。
 
-\paragraph{情绪平坦性：虽被过滤但有效的信号。}
-\texttt{sentiment\_fluctuation} was removed by correlation filtering in both languages
-because it correlates ($|r|{>}0.85$) with other sentiment statistics.
-However, \texttt{sentiment\_neutrality} (higher in AI) survives and contributes to the
-Sentiment \& Emotion group. This supports the hypothesis that AI text lacks genuine
-emotional variation—the well-documented ``machine flavor'' of tonally flat prose.
+\paragraph{情绪平坦性：虽被过滤但有效的信号}
+\texttt{sentiment\_fluctuation} 因与其他情感统计高度相关（$|r|{>}0.85$）在两种语言中被移除。
+但 \texttt{sentiment\_neutrality} 保留并对分类有贡献，
+支持“AI 文本情绪变化不足、语气更平”的假设。
 
-\paragraph{与神经网络基线对比。}
-Our 92--95\% accuracy using only hand-crafted features compares favorably to
-the HC3 baseline detectors: Guo et al.\ report $\sim$98.8\% F1 with fine-tuned
-RoBERTa~\cite{guo2023hc3}, a 3--7\% gap that is the price of full interpretability.
-Unlike RoBERTa, our model explains every prediction through SHAP values,
-identifies the specific linguistic features driving each decision, and requires
-no GPU infrastructure at inference time.
+\paragraph{与神经网络基线对比}
+仅依赖手工特征时，我们在 HC3 上达到 92--95\% 准确率。
+相比 Guo 等报告的微调 RoBERTa（约 98.8\% F1）存在 3--7\% 差距，
+但换来了完整可解释性：模型可通过 SHAP 对每次预测给出特征级解释，
+并且推理阶段无需 GPU 基础设施。
 
 %%----------------------------------------------------------
 \section{结论}
 
-We presented an interpretable, feature-engineering-first pipeline for bilingual
-AIGC detection using the HC3 corpus.
-Six categories of 40--42 hand-crafted linguistic features—spanning vocabulary
-richness, readability, syntactic structure, discourse patterns, and sentiment—feed
-three gradient-boosted tree classifiers (RF, XGBoost, LightGBM).
-SHAP attribution quantitatively reveals that \emph{bigram repetition, syntactic
-clause depth, and vocabulary diversity} are the dominant signals exposing AI text,
-with consistent cross-language and cross-model agreement.
+本文提出了一种面向 HC3 的中英双语、可解释、特征工程优先的 AIGC 检测流程。
+通过词汇丰富度、可读性、句法结构、话语连接、情感情绪等维度构建 40--42 个有效特征，
+并结合 RF、XGBoost、LightGBM 三类集成树模型实现高精度检测。
+SHAP 分析定量表明：\emph{二元词组重复、句法层级深度、词汇多样性}
+是识别 AI 文本的核心信号，且在跨语言、跨模型上具有一致性。
 
-Our work demonstrates that accurate, interpretable AIGC detection is achievable
-without black-box deep learning. The feature taxonomy and SHAP methodology developed
-here can readily be extended to new languages, new LLMs, and domain-specific
-detection scenarios.
+研究结果说明：在不依赖黑盒深度模型的前提下，
+同样可以实现准确且可解释的 AIGC 检测。
+本文构建的特征体系与归因方法可进一步迁移到新语言、新模型与垂直领域场景。
 
-\paragraph{局限性与未来工作。}
-The current feature set does not model \emph{topic or domain distribution} shifts;
-future work should evaluate cross-domain generalization.
-Dependency parsing is available for English only; adding a Chinese dependency parser
-(e.g., LTP) could narrow the 3\% accuracy gap.
-As LLMs evolve, the feature thresholds may drift; periodic recalibration will be needed.
+\paragraph{局限性与未来工作}
+当前特征尚未显式建模\emph{主题与领域分布迁移}，未来应重点评估跨领域泛化能力。
+此外依存句法特征当前仅用于英文，若引入中文依存分析器（如 LTP），
+有望缩小约 3\% 的性能差距。
+随着 LLM 持续迭代，特征阈值与判别边界可能漂移，
+因此需要周期性重标定。
 
 %%----------------------------------------------------------
 \begin{acks}
