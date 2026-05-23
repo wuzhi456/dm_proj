@@ -6,6 +6,15 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{microtype}
+\usepackage{xeCJK}
+\setmainfont{Noto Serif CJK SC}
+\setsansfont{Noto Sans CJK SC}
+\setmonofont{Noto Sans Mono CJK SC}
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKsansfont{Noto Sans CJK SC}
+\setCJKmonofont{Noto Sans Mono CJK SC}
+\newcommand{\cn}[1]{#1}
+\newcommand{\zhtext}[2]{\texorpdfstring{\cn{#1}}{#2}}
 
 %% Remove ACM reference format / copyright box for course submission
 \setcopyright{none}
@@ -17,15 +26,13 @@
 
 \title{Interpretable AIGC Detection via Multi-Dimensional Linguistic Feature Engineering: A Deep Analysis of the HC3 Corpus}
 
-\author{Yichong Yang}
-\author{Jiahao Wei}
-\author{Jiaxuan Xiong}
-\author{Zizhi Zeng}
-\author{Yiming Jiang}
+\author{\zhtext{杨意翀}{Yichong Yang}}
+\author{\zhtext{韦嘉豪}{Jiahao Wei}}
+\author{\zhtext{熊佳漩}{Jiaxuan Xiong}}
+\author{\zhtext{曾子致}{Zizhi Zeng}}
+\author{\zhtext{江易明}{Yiming Jiang}}
 \affiliation{%
-  \institution{Southern University of Science and Technology}
-  \city{Shenzhen}
-  \country{China}
+  \institution{\zhtext{南方科技大学}{Southern University of Science and Technology}}
 }
 
 %%----------------------------------------------------------
@@ -532,7 +539,7 @@ length—another manifestation of its ``machine-flavored'' regularity.
 
 \paragraph{Finding 6: Transition/discourse features confirm AI's structured rhetoric.}
 Hedging expressions (\texttt{trans\_hedging}) rank \#8 in Chinese SHAP, confirming
-that phrases like ``值得注意的是'' (``it is worth noting'') and ``一般来说''
+that phrases like ``\zhtext{值得注意的是}{值得注意的是}'' (``it is worth noting'') and ``\zhtext{一般来说}{一般来说}''
 (``generally speaking'') are disproportionately frequent in AI text.
 Collectively, transition word features contribute 8.5--8.8\% of total SHAP,
 a modest but consistent contribution.
