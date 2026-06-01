@@ -145,6 +145,37 @@ DetectGPT~\cite{mitchell2023detectgpt}通过扰动文本并测量对数概率曲
 \end{tabular}
 \end{table}
 
+\paragraph{来源分布与长度差异}
+图~\ref{fig:source_en}--\ref{fig:length_zh} 展示 HC3-EN 与 HC3-ZH 的来源分布与文本长度差异。
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/source_en.png}
+\caption{HC3-EN 来源分布（Human/AI 堆叠）。}
+\label{fig:source_en}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/source_zh.png}
+\caption{HC3-ZH 来源分布（Human/AI 堆叠）。}
+\label{fig:source_zh}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/length_en.png}
+\caption{HC3-EN 文本长度分布（字符数）。}
+\label{fig:length_en}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/length_zh.png}
+\caption{HC3-ZH 文本长度分布（字符数）。}
+\label{fig:length_zh}
+\end{figure}
+
 %%----------------------------------------------------------
 \section{特征工程}
 
@@ -237,6 +268,21 @@ fluctuation（句级 compound 标准差）、range（最大值减最小值）、
 在训练集上计算特征两两 Pearson 相关矩阵，
 对 $|r|{>}0.85$ 的特征对移除其中一个，并保留方差更高者。
 该步骤将英文特征从 51 降至 \textbf{42}，中文从 46 降至 \textbf{40}（见表~\ref{tab:removed}）。
+图~\ref{fig:corr_en} 与图~\ref{fig:corr_zh} 给出两种语言的特征相关性热力图。
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/corr_en.png}
+\caption{HC3-EN 特征相关性热力图。}
+\label{fig:corr_en}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/corr_zh.png}
+\caption{HC3-ZH 特征相关性热力图。}
+\label{fig:corr_zh}
+\end{figure*}
 
 \begin{table}[h]
 \centering
@@ -337,6 +383,37 @@ LightGBM      & \textbf{0.9205} & \textbf{0.9269} & 0.9130 & \textbf{0.9199} & 0
 \end{tabular}
 \end{table}
 
+图~\ref{fig:metrics_en} 与图~\ref{fig:metrics_zh} 总结三种模型的 Accuracy/F1/AUC，
+图~\ref{fig:roc_en} 与图~\ref{fig:roc_zh} 展示 ROC 曲线对比。
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/metrics_en.png}
+\caption{HC3-EN 模型性能对比（Accuracy/F1/AUC）。}
+\label{fig:metrics_en}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/metrics_zh.png}
+\caption{HC3-ZH 模型性能对比（Accuracy/F1/AUC）。}
+\label{fig:metrics_zh}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/roc_en.png}
+\caption{HC3-EN 模型 ROC 曲线。}
+\label{fig:roc_en}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/roc_zh.png}
+\caption{HC3-ZH 模型 ROC 曲线。}
+\label{fig:roc_zh}
+\end{figure}
+
 \subsection{跨语言对比}
 
 从结果看，英文更容易被准确检测：XGBoost 在英文上达到 95.1\%，而中文为 92.1\%。
@@ -400,6 +477,37 @@ LightGBM      & \textbf{0.9205} & \textbf{0.9269} & 0.9130 & \textbf{0.9199} & 0
 \end{tabular}
 \end{table}
 
+图~\ref{fig:top_features_en} 与图~\ref{fig:top_features_zh} 给出关键 SHAP 特征在 Human/AI 中的分布差异，
+图~\ref{fig:shap_summary_en} 与图~\ref{fig:shap_summary_zh} 展示全局 SHAP 重要性排序。
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/top_features_en.png}
+\caption{HC3-EN 关键 SHAP 特征分布（Human vs AI）。}
+\label{fig:top_features_en}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/top_features_zh.png}
+\caption{HC3-ZH 关键 SHAP 特征分布（Human vs AI）。}
+\label{fig:top_features_zh}
+\end{figure*}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/shap_summary_en.png}
+\caption{HC3-EN SHAP 全局重要性（Top-15）。}
+\label{fig:shap_summary_en}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/shap_summary_zh.png}
+\caption{HC3-ZH SHAP 全局重要性（Top-15）。}
+\label{fig:shap_summary_zh}
+\end{figure}
+
 \subsection{特征组重要性}
 
 表~\ref{tab:group}按六类特征汇总 SHAP 贡献。
@@ -428,6 +536,22 @@ Readability            & 5.2  & 6.8  \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+图~\ref{fig:shap_group_en} 与图~\ref{fig:shap_group_zh} 将特征组贡献可视化展示。
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/shap_group_en.png}
+\caption{HC3-EN 特征组 SHAP 贡献占比。}
+\label{fig:shap_group_en}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/shap_group_zh.png}
+\caption{HC3-ZH 特征组 SHAP 贡献占比。}
+\label{fig:shap_group_zh}
+\end{figure}
 
 \subsection{多模型特征重要性共识}
 
